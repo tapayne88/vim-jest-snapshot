@@ -2,7 +2,7 @@ if !exists('g:jest_file_pattern')
   let g:jest_file_pattern = '\v(__tests__/.*|(spec|test))\.(js|jsx|coffee|ts|tsx)$'
 endif
 
-let test_patterns = {
+let g:test_patterns = {
   \ 'test': ['\v^\s*%(it|test)\s*[( ]\s*%("|''|`)(.*)%("|''|`)'],
   \ 'namespace': ['\v^\s*%(describe|suite|context)\s*[( ]\s*%("|''|`)(.*)%("|''|`)'],
 \}
@@ -23,10 +23,16 @@ function! snapshot#show() abort
 
   " find nearest snapshot string
   let position = s:get_position(expand('%'))
+  let snapshot_string = s:get_snapshot_string(position)
 
-  " try to find snapshot string in file
-  " found: jump to it
-  " not found: message
+  " get line number of snapshot string in file
+  let line_number = system('grep -E -n "'. snapshot_string .'" '. snapshot_file .' | cut -f 1 -d ":"')
+  if (empty(line_number))
+    call s:echo_failure('Could not find snapshot in file') | return
+  endif
+
+  " open file at line...
+  execute 'edit +'. s:chomp(line_number) . ' ' . snapshot_file
 endfunction
 
 function! s:snapshot_filename(filename) abort
@@ -50,11 +56,9 @@ function! s:get_position(path) abort
   return position
 endfunction
 
-function! s:get_test_string(position) abort
-  let name = s:nearest_test(a:position, test_patterns)
-  return (len(name['namespace']) ? '^' : '') .
-       \ s:escape_regex(join(name['namespace'] + name['test'])) .
-       \ (len(name['test']) ? '$' : '')
+function! s:get_snapshot_string(position) abort
+  let name = s:nearest_test(a:position, g:test_patterns)
+  return '\b'. s:escape_regex(join(name['namespace'] + name['test'])) .' \d?\b'
 endfunction
 
 function! s:echo_failure(message) abort
@@ -121,4 +125,8 @@ endfunction
 
 function! s:escape_regex(string) abort
   return escape(a:string, '?+*\^$.|{}[]()')
+endfunction
+
+function! s:chomp(string)
+  return substitute(a:string, '\n\+$', '', '')
 endfunction

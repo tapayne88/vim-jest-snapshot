@@ -1,6 +1,6 @@
-if exists('g:loaded_test')
+if exists('g:loaded_snapshot')
   finish
 endif
-let g:loaded_test = 1
+let g:loaded_snapshot = 1
 
 command! -nargs=* -bar JumpToSnapshot call snapshot#show(split(<q-args>))
